@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'Maven-3.9'
+        jdk 'JDK-11'
+    }
+    
+    environment {
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_TOKEN = 'sqp_9c142b0b4b14673f080854151da382bdda91989c'
+        ARTIFACTORY_URL = 'http://localhost:8081/artifactory'
+        TOMCAT_URL = 'http://localhost:8080/manager/text'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                    publishHTML([
+                        reportDir: 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        reportName: 'Jacoco Coverage Report'
+                    ])
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn sonar:sonar -Dsonar.token=${SONAR_TOKEN}'
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        
+        stage('Build WAR') {
+            steps {
+                sh 'mvn package -DskipTests'
+                archiveArtifacts artifacts: 'target/*.war'
+            }
+        }
+        
+        stage('Deploy to Tomcat') {
+            steps {
+                sh '''
+                    curl -u admin:admin \
+                    -T target/whiteboard.war \
+                    "${TOMCAT_URL}/deploy?path=/whiteboard&update=true"
+                '''
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    def healthCheck = sh(
+                        script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/whiteboard/health',
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (healthCheck != '200') {
+                        error("Health check failed with status: ${healthCheck}")
+                    }
+                    echo "Deployment verified successfully!"
+                }
+            }
+        }
+    }
+    
+    post {
+        failure {
+            emailext (
+                subject: "FAILED: Build ${env.BUILD_NUMBER} - ${env.JOB_NAME}",
+                body: "The build failed. SonarQube quality gate not passed.",
+                to: 'team@example.com'
+            )
+        }
+    }
+}

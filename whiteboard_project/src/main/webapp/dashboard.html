@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Whiteboard Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .username {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .logout-btn {
+            background: #fee;
+            color: #c33;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: #fdd;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .hero {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .btn-create {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        
+        .boards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .board-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .board-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .template-section {
+            margin-top: 2rem;
+        }
+        
+        .template-grid {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        .template-card {
+            background: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .template-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        h2 {
+            color: white;
+            margin-top: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-chalkboard"></i> Whiteboard Pro</div>
+        <div class="user-info">
+            <span class="username" id="usernameDisplay"></span>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="hero">
+            <h1>🎨 Your Creative Space</h1>
+            <p>Real‑time collaboration • AI shape detection • Full toolkit</p>
+            <button class="btn-create" onclick="showCreateModal()"><i class="fas fa-plus"></i> New Whiteboard</button>
+        </div>
+        
+        <h2><i class="fas fa-history"></i> Your Boards</h2>
+        <div id="boardsList" class="boards-grid">
+            <div class="loading">Loading your boards...</div>
+        </div>
+        
+        <div class="template-section">
+            <h2><i class="fas fa-star"></i> Start with a Template</h2>
+            <div class="template-grid">
+                <div class="template-card" onclick="createFromTemplate('flowchart')">📊 Flowchart</div>
+                <div class="template-card" onclick="createFromTemplate('mindmap')">🧠 Mind Map</div>
+                <div class="template-card" onclick="createFromTemplate('kanban')">📌 Kanban</div>
+                <div class="template-card" onclick="createFromTemplate('brainstorm')">💡 Brainstorm</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3>Create Whiteboard</h3>
+            <input type="text" id="boardName" placeholder="Board name" value="My Board">
+            <select id="boardTemplate">
+                <option value="blank">Blank Canvas</option>
+                <option value="flowchart">Flowchart</option>
+                <option value="mindmap">Mind Map</option>
+                <option value="kanban">Kanban</option>
+                <option value="brainstorm">Brainstorm</option>
+            </select>
+            <button class="btn-create" onclick="createBoard()">Create</button>
+            <button onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = window.location.origin + '/whiteboard/api';
+        let currentUser = null;
+        
+        // Check authentication
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/auth/session`);
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                currentUser = data;
+                document.getElementById('usernameDisplay').textContent = data.username;
+                loadBoards();
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = 'login.html';
+            }
+        }
+        
+        async function loadBoards() {
+            try {
+                const response = await fetch(`${API_URL}/boards`);
+                const boards = await response.json();
+                renderBoards(boards);
+            } catch (error) {
+                console.error('Failed to load boards:', error);
+                document.getElementById('boardsList').innerHTML = 
+                    '<div class="loading">Failed to load boards. Please try again.</div>';
+            }
+        }
+        
+        function renderBoards(boards) {
+            const container = document.getElementById('boardsList');
+            
+            if (!boards || boards.length === 0) {
+                container.innerHTML = '<div class="loading">No boards yet. Create your first board!</div>';
+                return;
+            }
+            
+            container.innerHTML = boards.map(board => `
+                <div class="board-card" onclick="openBoard('${board.id}')">
+                    <h3>${escapeHtml(board.name)}</h3>
+                    <small>${new Date(board.updated_at || board.updated).toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        function showCreateModal() {
+            document.getElementById('modal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+        
+        async function createBoard() {
+            const name = document.getElementById('boardName').value.trim() || 'Untitled';
+            const template = document.getElementById('boardTemplate').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/boards`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, template, content: '{}' })
+                });
+                
+                const data = await response.json();
+                if (data.success || data.id) {
+                    closeModal();
+                    openBoard(data.id);
+                }
+            } catch (error) {
+                console.error('Failed to create board:', error);
+                alert('Failed to create board. Please try again.');
+            }
+        }
+        
+        async function createFromTemplate(type) {
+            try {
+                const response = await fetch(`${API_URL}/boards`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name: type.charAt(0).toUpperCase() + type.slice(1),
+                        template: type,
+                        content: '{}'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success || data.id) {
+                    openBoard(data.id);
+                }
+            } catch (error) {
+                console.error('Failed to create board:', error);
+                alert('Failed to create board. Please try again.');
+            }
+        }
+        
+        function openBoard(boardId) {
+            window.location.href = `whiteboard.html?id=${boardId}`;
+        }
+        
+        async function logout() {
+            try {
+                await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+                localStorage.clear();
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // Initialize
+        checkAuth();
+    </script>
+</body>
+</html>
